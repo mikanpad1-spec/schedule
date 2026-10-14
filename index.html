@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>氷晶ログ</title>
+<style>
+:root{--bg:#f4f8fd;--card:#fff;--tx:#1d2b45;--sub:#6b7a93;--line:#dbe4f0;--ac:#2f6fd0;--up:#1a9150;--dn:#d6453d;--sat:#2f6fd0;--sun:#d6453d;--sel:#e3eeff;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161d;--card:#1b2230;--tx:#e6ecf7;--sub:#93a0b8;--line:#2c3649;--ac:#6aa3ff;--up:#4cd08a;--dn:#ff7b73;--sat:#6aa3ff;--sun:#ff7b73;--sel:#26344d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12161d;--card:#1b2230;--tx:#e6ecf7;--sub:#93a0b8;--line:#2c3649;--ac:#6aa3ff;--up:#4cd08a;--dn:#ff7b73;--sat:#6aa3ff;--sun:#ff7b73;--sel:#26344d;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;padding:14px}
+.wrap{max-width:560px;margin:0 auto}
+h1{font-size:20px;margin:4px 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+input[type=number]{flex:1;font-size:18px}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600}
+button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
+.res{margin-top:10px;font-size:15px;min-height:22px}
+.up{color:var(--up)}.dn{color:var(--dn)}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:var(--sub)}
+.stats b{display:block;font-size:17px;color:var(--tx)}
+.nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.nav strong{font-size:16px}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.dow{text-align:center;font-size:11px;color:var(--sub);padding:2px 0}
+.cell{min-height:58px;border:1px solid var(--line);border-radius:8px;padding:3px 2px;text-align:center;font-size:10px;background:var(--bg);cursor:pointer;overflow:hidden}
+.cell.e{border:0;background:none;cursor:default}
+.cell.sel{background:var(--sel);border-color:var(--ac)}
+.cell .d{font-size:10px;color:var(--sub);text-align:left;padding-left:3px}
+.cell .v{font-size:11px;font-weight:600;margin-top:2px}
+.cell .df{font-size:10px;font-weight:700}
+.cell.today .d{color:var(--ac);font-weight:700}
+.sat .d{color:var(--sat)}.sun .d{color:var(--sun)}
+.note{font-size:11px;color:var(--sub);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>❄️ 氷晶ログ</h1>
+
+<div class="card">
+<div class="row"><input type="date" id="date"><input type="number" id="val" inputmode="numeric" placeholder="現在の氷晶数"></div>
+<input type="text" id="memo" placeholder="メモ(何に使った?)" maxlength="100" style="width:100%;margin-top:8px">
+<div class="row" style="margin-top:8px"><button id="save">記録する</button><button class="g" id="del">この日を削除</button></div>
+<div class="res" id="res"></div>
+</div>
+
+<div class="card stats">
+<div>最新の氷晶<b id="sLatest">-</b></div>
+<div>目標(61万)まで<b id="sGoal">-</b></div>
+<div>今月の増減<b id="sMonth">-</b></div>
+<div>1日平均(今月)<b id="sAvg">-</b></div>
+</div>
+
+<div class="card">
+<div class="nav"><button class="g" id="prev">◀</button><strong id="title"></strong><button class="g" id="next">▶</button></div>
+<div class="grid" id="grid"></div>
+<div class="note">日付をタップすると入力欄に呼び出せます。📝はメモのある日です。増減は直前の記録日との差です。データはこの端末のブラウザに保存されます。</div>
+<div id="memos" style="margin-top:10px"></div>
+</div>
+</div>
+
+<script>
+var KEY="ice-log-v1",MKEY="ice-memo-v1",GOAL=610000,data={},memo={};
+try{data=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){data={}}
+try{memo=JSON.parse(localStorage.getItem(MKEY)||"{}")}catch(e){memo={}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(MKEY,JSON.stringify(memo))}catch(e){}}
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+var today=iso(new Date()),sel=today,view=new Date();view.setDate(1);
+var $=function(i){return document.getElementById(i)};
+function fmt(n){return n.toLocaleString("ja-JP")}
+function sg(n){return (n>0?"+":n<0?"−":"±")+fmt(Math.abs(n))}
+function cls(n){return n>0?"up":n<0?"dn":""}
+function prevKey(k){var ks=Object.keys(data).filter(function(x){return x<k}).sort();return ks.length?ks[ks.length-1]:null}
+function diff(k){var p=prevKey(k);return p===null?null:data[k]-data[p]}
+function short(n){return Math.abs(n)>=10000?(n/10000).toFixed(2).replace(/\.?0+$/,"")+"万":fmt(n)}
+function showRes(){
+  var k=$("date").value;
+  if(data[k]===undefined){$("res").innerHTML="";return}
+  var d=diff(k),p=prevKey(k);
+  $("res").innerHTML=d===null?"初回の記録です":"前回("+p.slice(5).replace("-","/")+")比 <b class='"+cls(d)+"'>"+sg(d)+"</b>";
+}
+function render(){
+  var y=view.getFullYear(),m=view.getMonth();
+  $("title").textContent=y+"年"+(m+1)+"月";
+  var g=$("grid");g.innerHTML="";
+  "日月火水木金土".split("").forEach(function(w,i){var e=document.createElement("div");e.className="dow";e.textContent=w;e.style.color=i==0?"var(--sun)":i==6?"var(--sat)":"";g.appendChild(e)});
+  var first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  for(var i=0;i<first;i++){var e=document.createElement("div");e.className="cell e";g.appendChild(e)}
+  var mSum=0,mCnt=0;
+  for(var d=1;d<=days;d++){
+    var k=iso(new Date(y,m,d)),dow=new Date(y,m,d).getDay(),c=document.createElement("div");
+    c.className="cell"+(k===sel?" sel":"")+(k===today?" today":"")+(dow==0?" sun":dow==6?" sat":"");
+    var h="<div class='d'>"+d+"</div>";
+    if(data[k]!==undefined){
+      h+="<div class='v'>"+short(data[k])+"</div>";
+      var df=diff(k);
+      if(df!==null){h+="<div class='df "+cls(df)+"'>"+sg(df)+"</div>";mSum+=df;mCnt++}
+    }
+    if(memo[k])h+="<div>📝</div>";c.innerHTML=h;
+    (function(kk){c.onclick=function(){sel=kk;$("date").value=kk;$("val").value=data[kk]!==undefined?data[kk]:"";$("memo").value=memo[kk]||"";showRes();render()}})(k);
+    g.appendChild(c);
+  }
+  $("sMonth").innerHTML=mCnt?"<span class='"+cls(mSum)+"'>"+sg(mSum)+"</span>":"-";
+  $("sAvg").innerHTML=mCnt?"<span class='"+cls(mSum/mCnt)+"'>"+sg(Math.round(mSum/mCnt))+"</span>":"-";
+  var ml=$("memos");ml.innerHTML="";
+  var pre=y+"-"+String(m+1).padStart(2,"0")+"-";
+  Object.keys(memo).filter(function(x){return x.indexOf(pre)==0&&memo[x]}).sort().forEach(function(x){
+    var r=document.createElement("div");r.style.cssText="font-size:13px;padding:6px 0;border-top:1px solid var(--line)";
+    var df=data[x]!==undefined?diff(x):null;
+    var t=document.createElement("span");t.style.color="var(--sub)";t.textContent=parseInt(x.slice(8),10)+"日 ";r.appendChild(t);
+    if(df!==null){var s=document.createElement("b");s.className=cls(df);s.textContent=sg(df)+" ";r.appendChild(s)}
+    r.appendChild(document.createTextNode(memo[x]));ml.appendChild(r)});
+  if(!ml.children.length)ml.innerHTML="<div class='note'>この月のメモはまだありません</div>";
+  var ks=Object.keys(data).sort();
+  if(ks.length){var l=data[ks[ks.length-1]];$("sLatest").textContent=fmt(l);var r=GOAL-l;$("sGoal").textContent=r>0?"あと "+fmt(r):"達成 🎉"}
+  else{$("sLatest").textContent="-";$("sGoal").textContent="-"}
+}
+$("date").value=today;
+$("date").onchange=function(){sel=$("date").value;var k=sel;$("val").value=data[k]!==undefined?data[k]:"";$("memo").value=memo[k]||"";var dt=new Date(k+"T00:00:00");if(!isNaN(dt)){view=new Date(dt.getFullYear(),dt.getMonth(),1)}showRes();render()};
+$("save").onclick=function(){
+  var k=$("date").value,v=parseInt($("val").value,10);
+  var mt=$("memo").value.trim();if(!k||(isNaN(v)&&!mt)){$("res").textContent="日付と、氷晶数かメモを入力してください";return}if(mt)memo[k]=mt;else delete memo[k];
+  if(!isNaN(v))data[k]=v;save();sel=k;showRes();render();
+};
+$("del").onclick=function(){var k=$("date").value;if(data[k]!==undefined||memo[k]){delete data[k];delete memo[k];save();$("val").value="";$("memo").value="";showRes();render()}};
+$("prev").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
+$("next").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
+if(data[today]!==undefined)$("val").value=data[today];
+$("memo").value=memo[today]||"";
+showRes();render();
+</script>
+</body>
+</html>
