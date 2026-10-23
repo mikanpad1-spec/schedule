@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -24,6 +25,7 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 .up{color:var(--up)}.dn{color:var(--dn)}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px;color:var(--sub)}
 .stats b{display:block;font-size:17px;color:var(--tx)}
+.stats .inl b{display:inline;font-size:inherit}
 .nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .nav strong{font-size:16px}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
@@ -37,6 +39,12 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 .cell.today .d{color:var(--ac);font-weight:700}
 .sat .d{color:var(--sat)}.sun .d{color:var(--sun)}
 .note{font-size:11px;color:var(--sub);margin-top:8px}
+.gset{margin-top:6px;display:grid;gap:6px;font-size:12px;color:var(--sub)}
+.gset .row{gap:6px}
+.gset input{padding:5px;font-size:13px}
+.gset input[type=number]{flex:none;width:96px}
+.gset input[type=date]{flex:none}
+.gset button{padding:5px 10px;font-size:12px}
 </style>
 </head>
 <body>
@@ -48,7 +56,12 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 <input type="text" id="memo" placeholder="メモ(何に使った?)" maxlength="100" style="width:100%;margin-top:8px">
 <div class="row" style="margin-top:8px"><button id="save">記録する</button><button class="g" id="del">この日を削除</button></div>
 <div class="res" id="res"></div>
-<details style="margin-top:8px;font-size:12px;color:var(--sub)"><summary>目標を変更</summary><div style="margin-top:6px"><input type="number" id="goal" inputmode="numeric" style="width:120px;padding:5px;font-size:13px"> <button class="g" id="gset" style="padding:5px 10px;font-size:12px">設定</button></div></details>
+<details style="margin-top:8px;font-size:12px;color:var(--sub)"><summary>目標を変更</summary>
+<div class="gset">
+<div class="row"><label for="goal">目標数</label><input type="number" id="goal" inputmode="numeric"></div>
+<div class="row"><label for="gdate">期日</label><input type="date" id="gdate"><label for="gdays">または あと</label><input type="number" id="gdays" inputmode="numeric" min="1" placeholder="日数"><span>日</span></div>
+<div class="row"><button id="gset">設定</button><button class="g" id="gclr">期日を消す</button></div>
+</div></details>
 </div>
 
 <div class="card stats">
@@ -56,13 +69,14 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 <div><span id="gLabel">目標まで</span><b id="sGoal">-</b></div>
 <div>今月の増減<b id="sMonth">-</b></div>
 <div>1日平均(今月)<b id="sAvg">-</b></div>
-<div id="proj" style="grid-column:1/-1;font-size:12px"></div>
+<div id="need" class="inl" style="grid-column:1/-1;font-size:12px"></div>
+<div id="proj" class="inl" style="grid-column:1/-1;font-size:12px"></div>
 </div>
 
 <div class="card">
 <div class="nav"><button class="g" id="prev">◀</button><strong id="title"></strong><button class="g" id="next">▶</button></div>
 <div class="grid" id="grid"></div>
-<div class="note">日付をタップすると入力欄に呼び出せます。📝はメモのある日です。増減は直前の記録日との差です。データはこの端末のブラウザに保存されます。</div>
+<div class="note">日付をタップすると入力欄に呼び出せます。📝はメモのある日、🏁は目標の期日です。増減は直前の記録日との差です。データはこの端末のブラウザに保存されます。</div>
 <div id="memos" style="margin-top:10px"></div>
 </div>
 <div class="card"><strong>推移</strong><div id="chart" style="margin-top:8px"></div>
@@ -70,10 +84,11 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 </div>
 
 <script>
-var KEY="ice-log-v1",MKEY="ice-memo-v1",GKEY="ice-goal-v1",GOAL=610000,data={},memo={};
+var KEY="ice-log-v1",MKEY="ice-memo-v1",GKEY="ice-goal-v1",GDKEY="ice-goaldate-v1",GOAL=610000,GDATE="",data={},memo={};
 try{data=JSON.parse(localStorage.getItem(KEY)||"{}")}catch(e){data={}}
 try{memo=JSON.parse(localStorage.getItem(MKEY)||"{}")}catch(e){memo={}}
 try{var g0=parseInt(localStorage.getItem(GKEY),10);if(g0>0)GOAL=g0}catch(e){}
+try{var gd0=localStorage.getItem(GDKEY);if(gd0&&/^\d{4}-\d\d-\d\d$/.test(gd0))GDATE=gd0}catch(e){}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(MKEY,JSON.stringify(memo))}catch(e){}}
 function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 var today=iso(new Date()),sel=today,view=new Date();view.setDate(1);
@@ -81,6 +96,9 @@ var $=function(i){return document.getElementById(i)};
 function fmt(n){return n.toLocaleString("ja-JP")}
 function sg(n){return (n>0?"+":n<0?"−":"±")+fmt(Math.abs(n))}
 function cls(n){return n>0?"up":n<0?"dn":""}
+function md(k){return parseInt(k.slice(5,7),10)+"/"+parseInt(k.slice(8),10)}
+function tm(k){return new Date(k+"T00:00:00").getTime()}
+function daysLeft(){return GDATE?Math.round((tm(GDATE)-tm(today))/86400000):null}
 function prevKey(k){var ks=Object.keys(data).filter(function(x){return x<k}).sort();return ks.length?ks[ks.length-1]:null}
 function diff(k){var p=prevKey(k);return p===null?null:data[k]-data[p]}
 function short(n){return Math.abs(n)>=10000?(n/10000).toFixed(2).replace(/\.?0+$/,"")+"万":fmt(n)}
@@ -110,19 +128,40 @@ function drawChart(){
   s+="<text x='"+L+"' y='"+(H-5)+"' font-size='9' style='fill:var(--sub)'>"+ks[0].slice(5).replace("-","/")+" "+short(data[ks[0]])+"</text><text x='"+(W-R)+"' y='"+(H-5)+"' text-anchor='end' font-size='9' style='fill:var(--sub)'>"+lk.slice(5).replace("-","/")+" "+short(data[lk])+"</text></svg>";
   el.innerHTML=s;
 }
+function calcRate(){
+  var ks=Object.keys(data).sort();
+  if(ks.length<2)return null;
+  var last=ks[ks.length-1],lt=tm(last);
+  var rec=ks.filter(function(k){return lt-tm(k)<=14*86400000});
+  if(rec.length<2)rec=ks.slice(-2);
+  var f=rec[0],days=(lt-tm(f))/86400000;
+  return {rate:(data[last]-data[f])/days,days:days,last:last,lt:lt};
+}
 function proj(){
   var ks=Object.keys(data).sort(),el=$("proj");
-  if(ks.length<2){el.textContent="2日分以上記録すると到達見込みが出ます";return}
-  var last=ks[ks.length-1],lt=new Date(last+"T00:00:00").getTime();
-  var rec=ks.filter(function(k){return lt-new Date(k+"T00:00:00").getTime()<=14*86400000});
-  if(rec.length<2)rec=ks.slice(-2);
-  var f=rec[0],days=(lt-new Date(f+"T00:00:00").getTime())/86400000;
-  var rate=(data[last]-data[f])/days,rem=GOAL-data[last];
+  var c=calcRate();
+  if(!c){el.textContent="2日分以上記録すると到達見込みが出ます";return}
+  var rem=GOAL-data[c.last];
   if(rem<=0){el.innerHTML="目標に到達済みです 🎉";return}
-  var h="直近"+Math.round(days)+"日の平均 <b class='"+cls(rate)+"'>"+sg(Math.round(rate))+"</b>/日 → ";
-  if(rate<=0){el.innerHTML=h+"このままだと到達しません";return}
-  var d=new Date(lt+Math.ceil(rem/rate)*86400000);
+  var h="直近"+Math.round(c.days)+"日の平均 <b class='"+cls(c.rate)+"'>"+sg(Math.round(c.rate))+"</b>/日 → ";
+  if(c.rate<=0){el.innerHTML=h+"このままだと到達しません";return}
+  var d=new Date(c.lt+Math.ceil(rem/c.rate)*86400000);
   el.innerHTML=h+"<b>"+(d.getMonth()+1)+"/"+d.getDate()+"</b> ごろ到達見込み";
+}
+function needRate(){
+  var el=$("need"),dl=daysLeft(),ks=Object.keys(data).sort();
+  if(dl===null){el.innerHTML="";return}
+  if(!ks.length){el.innerHTML="期日 "+md(GDATE)+"(残り"+dl+"日)。氷晶数を記録すると必要ペースが出ます";return}
+  var rem=GOAL-data[ks[ks.length-1]];
+  if(rem<=0){el.innerHTML="";return}
+  if(dl<0){el.innerHTML="期日("+md(GDATE)+")を過ぎています。残り "+fmt(rem);return}
+  if(dl===0){el.innerHTML="今日が期日です。残り <b>"+fmt(rem)+"</b>";return}
+  var nd=Math.ceil(rem/dl);
+  var h="期日 "+md(GDATE)+" まで残り <b>"+dl+"日</b> → 1日 <b>+"+fmt(nd)+"</b> 必要";
+  var c=calcRate();
+  if(c){var gap=Math.round(c.rate)-nd;
+    h+=gap>=0?"<br><span class='up'>今のペースで間に合います(1日 "+sg(gap)+" の余裕)</span>":"<br><span class='dn'>今のペースだと1日 "+fmt(-gap)+" 足りません</span>"}
+  el.innerHTML=h;
 }
 function render(){
   var y=view.getFullYear(),m=view.getMonth();
@@ -141,13 +180,15 @@ function render(){
       var df=diff(k);
       if(df!==null){h+="<div class='df "+cls(df)+"'>"+sg(df)+"</div>";mSum+=df;mCnt++}
     }
-    if(memo[k])h+="<div>📝</div>";c.innerHTML=h;
+    if(memo[k])h+="<div>📝</div>";
+    if(k===GDATE)h+="<div>🏁</div>";
+    c.innerHTML=h;
     (function(kk){c.onclick=function(){sel=kk;$("date").value=kk;$("val").value=data[kk]!==undefined?data[kk]:"";$("memo").value=memo[kk]||"";showRes();render()}})(k);
     g.appendChild(c);
   }
   $("sMonth").innerHTML=mCnt?"<span class='"+cls(mSum)+"'>"+sg(mSum)+"</span>":"-";
   $("sAvg").innerHTML=mCnt?"<span class='"+cls(mSum/mCnt)+"'>"+sg(Math.round(mSum/mCnt))+"</span>":"-";
-  $("gLabel").textContent="目標("+short(GOAL)+")まで";drawChart();proj();
+  $("gLabel").textContent="目標("+short(GOAL)+")まで";drawChart();proj();needRate();
   var ml=$("memos");ml.innerHTML="";
   var pre=y+"-"+String(m+1).padStart(2,"0")+"-";
   Object.keys(memo).filter(function(x){return x.indexOf(pre)==0&&memo[x]}).sort().forEach(function(x){
@@ -162,7 +203,18 @@ function render(){
   else{$("sLatest").textContent="-";$("sGoal").textContent="-"}
 }
 $("goal").value=GOAL;
-$("gset").onclick=function(){var g=parseInt($("goal").value,10);if(g>0){GOAL=g;try{localStorage.setItem(GKEY,String(g))}catch(e){}render()}};
+function syncDays(){var dl=daysLeft();$("gdate").value=GDATE;$("gdays").value=dl!==null&&dl>0?dl:""}
+syncDays();
+$("gdays").oninput=function(){var n=parseInt($("gdays").value,10);if(n>0){var d=new Date();d.setDate(d.getDate()+n);$("gdate").value=iso(d)}else if($("gdays").value===""){$("gdate").value=""}};
+$("gdate").onchange=function(){var v=$("gdate").value;if(v){var n=Math.round((tm(v)-tm(today))/86400000);$("gdays").value=n>0?n:""}else{$("gdays").value=""}};
+$("gset").onclick=function(){
+  var g=parseInt($("goal").value,10);
+  if(g>0){GOAL=g;try{localStorage.setItem(GKEY,String(g))}catch(e){}}
+  var v=$("gdate").value;
+  if(/^\d{4}-\d\d-\d\d$/.test(v)){GDATE=v;try{localStorage.setItem(GDKEY,v)}catch(e){}}
+  syncDays();render();
+};
+$("gclr").onclick=function(){GDATE="";try{localStorage.removeItem(GDKEY)}catch(e){}syncDays();render()};
 $("date").value=today;
 $("date").onchange=function(){sel=$("date").value;var k=sel;$("val").value=data[k]!==undefined?data[k]:"";$("memo").value=memo[k]||"";var dt=new Date(k+"T00:00:00");if(!isNaN(dt)){view=new Date(dt.getFullYear(),dt.getMonth(),1)}showRes();render()};
 $("save").onclick=function(){
@@ -179,3 +231,5 @@ showRes();render();
 </script>
 </body>
 </html>
+
+</body></html>
