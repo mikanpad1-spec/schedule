@@ -68,7 +68,8 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 <div>最新の氷晶<b id="sLatest">-</b></div>
 <div><span id="gLabel">目標まで</span><b id="sGoal">-</b></div>
 <div>今月の増減<b id="sMonth">-</b></div>
-<div>1日平均(今月)<b id="sAvg">-</b></div>
+<div>貯蓄ペース(今月)<b id="sAvg">-</b></div>
+<div id="sBreak" class="inl" style="grid-column:1/-1;font-size:12px"></div>
 <div id="need" class="inl" style="grid-column:1/-1;font-size:12px"></div>
 <div id="proj" class="inl" style="grid-column:1/-1;font-size:12px"></div>
 </div>
@@ -135,7 +136,10 @@ function calcRate(){
   var rec=ks.filter(function(k){return lt-tm(k)<=14*86400000});
   if(rec.length<2)rec=ks.slice(-2);
   var f=rec[0],days=(lt-tm(f))/86400000;
-  return {rate:(data[last]-data[f])/days,days:days,last:last,lt:lt};
+  if(days<=0)return null;
+  var gain=0;
+  for(var i=1;i<rec.length;i++){var df=data[rec[i]]-data[rec[i-1]];if(df>0)gain+=df}
+  return {rate:gain/days,days:days,last:last,lt:lt};
 }
 function proj(){
   var ks=Object.keys(data).sort(),el=$("proj");
@@ -143,7 +147,7 @@ function proj(){
   if(!c){el.textContent="2日分以上記録すると到達見込みが出ます";return}
   var rem=GOAL-data[c.last];
   if(rem<=0){el.innerHTML="目標に到達済みです 🎉";return}
-  var h="直近"+Math.round(c.days)+"日の平均 <b class='"+cls(c.rate)+"'>"+sg(Math.round(c.rate))+"</b>/日 → ";
+  var h="直近"+Math.round(c.days)+"日の貯蓄ペース <b class='"+cls(c.rate)+"'>"+sg(Math.round(c.rate))+"</b>/日 → ";
   if(c.rate<=0){el.innerHTML=h+"このままだと到達しません";return}
   var d=new Date(c.lt+Math.ceil(rem/c.rate)*86400000);
   el.innerHTML=h+"<b>"+(d.getMonth()+1)+"/"+d.getDate()+"</b> ごろ到達見込み";
@@ -160,7 +164,7 @@ function needRate(){
   var h="期日 "+md(GDATE)+" まで残り <b>"+dl+"日</b> → 1日 <b>+"+fmt(nd)+"</b> 必要";
   var c=calcRate();
   if(c){var gap=Math.round(c.rate)-nd;
-    h+=gap>=0?"<br><span class='up'>今のペースで間に合います(1日 "+sg(gap)+" の余裕)</span>":"<br><span class='dn'>今のペースだと1日 "+fmt(-gap)+" 足りません</span>"}
+    h+=gap>=0?"<br><span class='up'>今の貯蓄ペースで間に合います(1日 "+sg(gap)+" の余裕)</span>":"<br><span class='dn'>今の貯蓄ペースだと1日 "+fmt(-gap)+" 足りません</span>"}
   el.innerHTML=h;
 }
 function render(){
@@ -170,7 +174,7 @@ function render(){
   "日月火水木金土".split("").forEach(function(w,i){var e=document.createElement("div");e.className="dow";e.textContent=w;e.style.color=i==0?"var(--sun)":i==6?"var(--sat)":"";g.appendChild(e)});
   var first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
   for(var i=0;i<first;i++){var e=document.createElement("div");e.className="cell e";g.appendChild(e)}
-  var mSum=0,mCnt=0;
+  var mSum=0,mCnt=0,mGain=0,mSpend=0,mDays=0;
   for(var d=1;d<=days;d++){
     var k=iso(new Date(y,m,d)),dow=new Date(y,m,d).getDay(),c=document.createElement("div");
     c.className="cell"+(k===sel?" sel":"")+(k===today?" today":"")+(dow==0?" sun":dow==6?" sat":"");
@@ -178,7 +182,7 @@ function render(){
     if(data[k]!==undefined){
       h+="<div class='v'>"+short(data[k])+"</div>";
       var df=diff(k);
-      if(df!==null){h+="<div class='df "+cls(df)+"'>"+sg(df)+"</div>";mSum+=df;mCnt++}
+      if(df!==null){h+="<div class='df "+cls(df)+"'>"+sg(df)+"</div>";mSum+=df;mCnt++;if(df>0)mGain+=df;else if(df<0)mSpend+=df;var pk2=prevKey(k);if(pk2)mDays+=(tm(k)-tm(pk2))/86400000}
     }
     if(memo[k])h+="<div>📝</div>";
     if(k===GDATE)h+="<div>🏁</div>";
@@ -187,7 +191,9 @@ function render(){
     g.appendChild(c);
   }
   $("sMonth").innerHTML=mCnt?"<span class='"+cls(mSum)+"'>"+sg(mSum)+"</span>":"-";
-  $("sAvg").innerHTML=mCnt?"<span class='"+cls(mSum/mCnt)+"'>"+sg(Math.round(mSum/mCnt))+"</span>":"-";
+  $("sAvg").innerHTML=(mCnt&&mDays>0)?"<span class='"+cls(mGain/mDays)+"'>"+sg(Math.round(mGain/mDays))+"</span>":"-";
+  var sb=$("sBreak");
+  if(mCnt&&(mGain>0||mSpend<0)){var parts=[];if(mGain>0)parts.push("貯めた量 <b class='up'>"+sg(mGain)+"</b>");if(mSpend<0)parts.push("使った量 <b class='dn'>"+sg(mSpend)+"</b>");sb.innerHTML="今月の内訳："+parts.join(" / ")}else{sb.innerHTML=""}
   $("gLabel").textContent="目標("+short(GOAL)+")まで";drawChart();proj();needRate();
   var ml=$("memos");ml.innerHTML="";
   var pre=y+"-"+String(m+1).padStart(2,"0")+"-";
