@@ -29,31 +29,39 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 .nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
 .nav strong{font-size:16px}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
-.dow{text-align:center;font-size:11px;color:var(--sub);padding:2px 0}
-.cell{min-height:58px;border:1px solid var(--line);border-radius:8px;padding:3px 2px;text-align:center;font-size:10px;background:var(--bg);cursor:pointer;overflow:hidden}
+.dow{text-align:center;font-size:12px;color:var(--sub);padding:2px 0}
+.cell{min-height:58px;border:1px solid var(--line);border-radius:8px;padding:3px 2px;text-align:center;font-size:11px;background:var(--bg);cursor:pointer;overflow:hidden}
 .cell.e{border:0;background:none;cursor:default}
 .cell.sel{background:var(--sel);border-color:var(--ac)}
-.cell .d{font-size:10px;color:var(--sub);text-align:left;padding-left:3px}
-.cell .v{font-size:11px;font-weight:600;margin-top:2px}
-.cell .df{font-size:10px;font-weight:700}
+.cell .d{font-size:11px;color:var(--sub);text-align:left;padding-left:3px}
+.cell .v{font-size:12px;font-weight:600;margin-top:2px}
+.cell .df{font-size:11px;font-weight:700}
 .cell.today .d{color:var(--ac);font-weight:700}
 .sat .d{color:var(--sat)}.sun .d{color:var(--sun)}
-.note{font-size:11px;color:var(--sub);margin-top:8px}
+.note{font-size:12px;color:var(--sub);margin-top:8px}
 .gset{margin-top:6px;display:grid;gap:6px;font-size:12px;color:var(--sub)}
 .gset .row{gap:6px}
 .gset input{padding:5px;font-size:13px}
 .gset input[type=number]{flex:none;width:96px}
 .gset input[type=date]{flex:none}
 .gset button{padding:5px 10px;font-size:12px}
+.fld{display:grid;gap:4px;font-size:12px;color:var(--sub)}
+.fld.grow{flex:1}
+.fld input{width:100%}
+input:focus{border-color:var(--ac)}
+input:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+.pbar{height:10px;background:var(--bg);border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.pbar i{display:block;height:100%;background:var(--ac);border-radius:999px}
+#inputCard{scroll-margin-top:10px}
 </style>
 </head>
 <body>
 <div class="wrap">
 <h1>❄️ 氷晶ログ</h1>
 
-<div class="card">
-<div class="row"><input type="date" id="date"><input type="number" id="val" inputmode="numeric" placeholder="現在の氷晶数"></div>
-<input type="text" id="memo" placeholder="メモ(何に使った?)" maxlength="100" style="width:100%;margin-top:8px">
+<div class="card" id="inputCard">
+<div class="row"><label class="fld"><span>日付</span><input type="date" id="date"></label><label class="fld grow"><span>現在の氷晶数</span><input type="number" id="val" inputmode="numeric" placeholder="例：57963"></label></div>
+<label class="fld" style="margin-top:8px"><span>メモ（何に使った？）</span><input type="text" id="memo" maxlength="100" style="width:100%"></label>
 <div class="row" style="margin-top:8px"><button id="save">記録する</button><button class="g" id="del">この日を削除</button></div>
 <div class="res" id="res"></div>
 <details style="margin-top:8px;font-size:12px;color:var(--sub)"><summary>目標を変更</summary>
@@ -62,11 +70,15 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 <div class="row"><label for="gdate">期日</label><input type="date" id="gdate"><label for="gdays">または あと</label><input type="number" id="gdays" inputmode="numeric" min="1" placeholder="日数"><span>日</span></div>
 <div class="row"><button id="gset">設定</button><button class="g" id="gclr">期日を消す</button></div>
 </div></details>
+<details style="margin-top:8px;font-size:12px;color:var(--sub)"><summary>データのバックアップ</summary>
+<div class="row" style="margin-top:8px"><button class="g" id="exp" style="padding:6px 10px;font-size:12px">書き出し（JSON）</button><button class="g" id="impBtn" style="padding:6px 10px;font-size:12px">読み込み</button><input type="file" id="imp" accept="application/json,.json" hidden></div>
+<div class="note">記録・メモ・目標をJSONファイルに保存／復元できます。復元すると今のデータに上書きされます。ブラウザのデータ消去に備えて、ときどき書き出しをおすすめします。</div></details>
 </div>
 
 <div class="card stats">
 <div>最新の氷晶<b id="sLatest">-</b></div>
 <div><span id="gLabel">目標まで</span><b id="sGoal">-</b></div>
+<div style="grid-column:1/-1"><div class="pbar"><i id="pFill" style="width:0%"></i></div><div id="pTxt" style="font-size:12px;margin-top:4px"></div></div>
 <div>今月の増減<b id="sMonth">-</b></div>
 <div>貯蓄ペース(今月)<b id="sAvg">-</b></div>
 <div id="sBreak" class="inl" style="grid-column:1/-1;font-size:12px"></div>
@@ -75,7 +87,7 @@ button.g{background:var(--bg);color:var(--tx);border:1px solid var(--line)}
 </div>
 
 <div class="card">
-<div class="nav"><button class="g" id="prev">◀</button><strong id="title"></strong><button class="g" id="next">▶</button></div>
+<div class="nav"><button class="g" id="prev">◀</button><strong id="title"></strong><span style="display:flex;gap:8px"><button class="g" id="todayBtn">今日</button><button class="g" id="next">▶</button></span></div>
 <div class="grid" id="grid"></div>
 <div class="note">日付をタップすると入力欄に呼び出せます。📝はメモのある日、🏁は目標の期日です。増減は直前の記録日との差です。データはこの端末のブラウザに保存されます。</div>
 <div id="memos" style="margin-top:10px"></div>
@@ -187,7 +199,7 @@ function render(){
     if(memo[k])h+="<div>📝</div>";
     if(k===GDATE)h+="<div>🏁</div>";
     c.innerHTML=h;
-    (function(kk){c.onclick=function(){sel=kk;$("date").value=kk;$("val").value=data[kk]!==undefined?data[kk]:"";$("memo").value=memo[kk]||"";showRes();render()}})(k);
+    (function(kk){c.onclick=function(){sel=kk;$("date").value=kk;$("val").value=data[kk]!==undefined?data[kk]:"";$("memo").value=memo[kk]||"";showRes();render();var ic=$("inputCard");if(ic){var r=ic.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight)ic.scrollIntoView({behavior:"smooth",block:"start"})}}})(k);
     g.appendChild(c);
   }
   $("sMonth").innerHTML=mCnt?"<span class='"+cls(mSum)+"'>"+sg(mSum)+"</span>":"-";
@@ -207,6 +219,9 @@ function render(){
   var ks=Object.keys(data).sort();
   if(ks.length){var l=data[ks[ks.length-1]];$("sLatest").textContent=fmt(l);var r=GOAL-l;$("sGoal").textContent=r>0?"あと "+fmt(r):"達成 🎉"}
   else{$("sLatest").textContent="-";$("sGoal").textContent="-"}
+  var pc=(ks.length&&GOAL>0)?Math.min(100,Math.round(l/GOAL*100)):0;
+  $("pFill").style.width=pc+"%";
+  $("pTxt").textContent=ks.length?("目標の "+pc+"% まで貯まっています"):"";
 }
 $("goal").value=GOAL;
 function syncDays(){var dl=daysLeft();$("gdate").value=GDATE;$("gdays").value=dl!==null&&dl>0?dl:""}
@@ -228,7 +243,35 @@ $("save").onclick=function(){
   var mt=$("memo").value.trim();if(!k||(isNaN(v)&&!mt)){$("res").textContent="日付と、氷晶数かメモを入力してください";return}if(mt)memo[k]=mt;else delete memo[k];
   if(!isNaN(v))data[k]=v;save();sel=k;showRes();render();
 };
-$("del").onclick=function(){var k=$("date").value;if(data[k]!==undefined||memo[k]){delete data[k];delete memo[k];save();$("val").value="";$("memo").value="";showRes();render()}};
+$("del").onclick=function(){var k=$("date").value;if(data[k]!==undefined||memo[k]){if(!window.confirm(k+" の記録を削除しますか？"))return;delete data[k];delete memo[k];save();$("val").value="";$("memo").value="";showRes();render()}};
+$("todayBtn").onclick=function(){view=new Date();view.setDate(1);render()};
+$("exp").onclick=function(){
+  var payload={app:"ice-log",version:1,data:data,memo:memo,goal:GOAL,gdate:GDATE};
+  var blob=new Blob([JSON.stringify(payload,null,1)],{type:"application/json"});
+  var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ice-log-backup-"+today+".json";document.body.appendChild(a);a.click();a.remove();
+  setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+};
+$("impBtn").onclick=function(){$("imp").click()};
+$("imp").onchange=function(){
+  var f=this.files&&this.files[0];if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var j=JSON.parse(rd.result),nd=j.data||j;
+      if(!nd||typeof nd!=="object")throw new Error("bad");
+      var clean={};Object.keys(nd).forEach(function(k){if(/^\d{4}-\d{2}-\d{2}$/.test(k)&&isFinite(+nd[k]))clean[k]=+nd[k]});
+      if(!Object.keys(clean).length)throw new Error("empty");
+      if(!window.confirm("バックアップを読み込みますか？今の記録は上書きされます。"))return;
+      data=clean;
+      if(j.memo&&typeof j.memo==="object")memo=j.memo;
+      if(+j.goal>0){GOAL=+j.goal;try{localStorage.setItem(GKEY,String(GOAL))}catch(e){}}
+      if(typeof j.gdate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(j.gdate)){GDATE=j.gdate;try{localStorage.setItem(GDKEY,GDATE)}catch(e){}}
+      save();$("goal").value=GOAL;syncDays();sel=today;$("date").value=today;$("val").value=data[today]!==undefined?data[today]:"";$("memo").value=memo[today]||"";showRes();render();
+      $("res").textContent="バックアップを読み込みました";
+    }catch(e){$("res").textContent="読み込みに失敗しました。JSONファイルを確認してください"}
+  };
+  rd.readAsText(f);this.value="";
+};
 $("prev").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
 $("next").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
 if(data[today]!==undefined)$("val").value=data[today];
