@@ -92,7 +92,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-off
 <div class="note">日付をタップすると入力欄に呼び出せます。📝はメモのある日、🏁は目標の期日です。増減は直前の記録日との差です。データはこの端末のブラウザに保存されます。</div>
 <div id="memos" style="margin-top:10px"></div>
 </div>
-<div class="card"><strong>推移</strong><div id="chart" style="margin-top:8px"></div>
+<div class="card"><div class="row" style="justify-content:space-between"><strong>推移</strong><span style="display:flex;gap:6px"><button class="g" id="cr0" style="padding:4px 10px;font-size:12px">全部</button><button class="g" id="cr90" style="padding:4px 10px;font-size:12px">90日</button><button class="g" id="cr30" style="padding:4px 10px;font-size:12px">30日</button></span></div><div id="chart" style="margin-top:8px"></div>
 </div>
 </div>
 
@@ -105,6 +105,7 @@ try{var gd0=localStorage.getItem(GDKEY);if(gd0&&/^\d{4}-\d\d-\d\d$/.test(gd0))GD
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));localStorage.setItem(MKEY,JSON.stringify(memo))}catch(e){}}
 function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
 var today=iso(new Date()),sel=today,view=new Date();view.setDate(1);
+var chartRange=0;
 var $=function(i){return document.getElementById(i)};
 function fmt(n){return n.toLocaleString("ja-JP")}
 function sg(n){return (n>0?"+":n<0?"−":"±")+fmt(Math.abs(n))}
@@ -122,9 +123,12 @@ function showRes(){
   $("res").innerHTML=d===null?"初回の記録です":"前回("+p.slice(5).replace("-","/")+")比 <b class='"+cls(d)+"'>"+sg(d)+"</b>";
 }
 function drawChart(){
-  var ks=Object.keys(data).sort(),el=$("chart");
-  if(ks.length<2){el.innerHTML="<div class='note'>2日分以上記録するとグラフが出ます</div>";return}
-  var W=320,H=150,L=8,R=8,T=12,B=20;
+  [0,90,30].forEach(function(r){var b=$("cr"+r);if(b){var on=chartRange===r;b.style.background=on?"var(--ac)":"";b.style.color=on?"#fff":""}});
+  var all=Object.keys(data).sort(),el=$("chart");
+  var ks=all;
+  if(chartRange>0&&all.length){var lt=tm(all[all.length-1]);ks=all.filter(function(k){return lt-tm(k)<=chartRange*86400000})}
+  if(ks.length<2){el.innerHTML="<div class='note'>"+(all.length<2?"2日分以上記録するとグラフが出ます":"この期間の記録が足りません。期間を広げてみてください")+"</div>";return}
+  var W=320,H=170,L=34,R=8,T=12,B=20;
   var t0=new Date(ks[0]+"T00:00:00").getTime(),t1=new Date(ks[ks.length-1]+"T00:00:00").getTime(),span=Math.max(t1-t0,1);
   var vs=ks.map(function(k){return data[k]}),mn=Math.min.apply(null,vs),mx=Math.max.apply(null,vs);
   if(GOAL>=mn&&GOAL<=mx*1.5)mx=Math.max(mx,GOAL);
@@ -134,7 +138,11 @@ function drawChart(){
   function Y(v){return T+(mx-v)/(mx-mn)*(H-T-B)}
   var pts=ks.map(function(k){return X(k).toFixed(1)+","+Y(data[k]).toFixed(1)}).join(" ");
   var s="<svg viewBox='0 0 "+W+" "+H+"' style='width:100%;height:auto'>";
+  for(var gi=0;gi<=3;gi++){var gv=mn+(mx-mn)*gi/3,gy=Y(gv).toFixed(1);
+    s+="<line x1='"+L+"' x2='"+(W-R)+"' y1='"+gy+"' y2='"+gy+"' style='stroke:var(--line)'/><text x='"+(L-3)+"' y='"+(+gy+3)+"' text-anchor='end' font-size='9' style='fill:var(--sub)'>"+short(Math.round(gv))+"</text>"}
   if(GOAL>=mn&&GOAL<=mx)s+="<line x1='"+L+"' x2='"+(W-R)+"' y1='"+Y(GOAL).toFixed(1)+"' y2='"+Y(GOAL).toFixed(1)+"' style='stroke:var(--up);stroke-dasharray:4 3'/><text x='"+(W-R)+"' y='"+(Y(GOAL)-3).toFixed(1)+"' text-anchor='end' font-size='9' style='fill:var(--up)'>目標 "+short(GOAL)+"</text>";
+  var area="M"+X(ks[0]).toFixed(1)+","+(H-B)+" L"+pts.replace(/ /g," L")+" L"+X(ks[ks.length-1]).toFixed(1)+","+(H-B)+" Z";
+  s+="<path d='"+area+"' style='fill:var(--ac);opacity:.12'/>";
   s+="<polyline points='"+pts+"' fill='none' stroke-width='2' style='stroke:var(--ac)'/>";
   ks.forEach(function(k){s+="<circle cx='"+X(k).toFixed(1)+"' cy='"+Y(data[k]).toFixed(1)+"' r='2.5' style='fill:var(--ac)'/>"});
   var lk=ks[ks.length-1];
@@ -276,6 +284,7 @@ $("prev").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()-1,
 $("next").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
 if(data[today]!==undefined)$("val").value=data[today];
 $("memo").value=memo[today]||"";
+["cr0","cr90","cr30"].forEach(function(id){$(id).onclick=function(){chartRange=id==="cr0"?0:id==="cr90"?90:30;drawChart()}});
 showRes();render();
 </script>
 </body>
