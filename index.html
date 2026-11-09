@@ -6,10 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>氷晶ログ</title>
 <style>
-:root{--bg:#f4f8fd;--card:#fff;--tx:#1d2b45;--sub:#6b7a93;--line:#dbe4f0;--ac:#2f6fd0;--up:#1a9150;--dn:#d6453d;--sat:#2f6fd0;--sun:#d6453d;--sel:#e3eeff;
+:root{--gold:#b8860b;--bg:#f4f8fd;--card:#fff;--tx:#1d2b45;--sub:#6b7a93;--line:#dbe4f0;--ac:#2f6fd0;--up:#1a9150;--dn:#d6453d;--sat:#2f6fd0;--sun:#d6453d;--sel:#e3eeff;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161d;--card:#1b2230;--tx:#e6ecf7;--sub:#93a0b8;--line:#2c3649;--ac:#6aa3ff;--up:#4cd08a;--dn:#ff7b73;--sat:#6aa3ff;--sun:#ff7b73;--sel:#26344d;color-scheme:dark}}
-:root[data-theme="dark"]{--bg:#12161d;--card:#1b2230;--tx:#e6ecf7;--sub:#93a0b8;--line:#2c3649;--ac:#6aa3ff;--up:#4cd08a;--dn:#ff7b73;--sat:#6aa3ff;--sun:#ff7b73;--sel:#26344d;color-scheme:dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--gold:#e6b93d;--bg:#12161d;--card:#1b2230;--tx:#e6ecf7;--sub:#93a0b8;--line:#2c3649;--ac:#6aa3ff;--up:#4cd08a;--dn:#ff7b73;--sat:#6aa3ff;--sun:#ff7b73;--sel:#26344d;color-scheme:dark}}
+:root[data-theme="dark"]{--gold:#e6b93d;--bg:#12161d;--card:#1b2230;--tx:#e6ecf7;--sub:#93a0b8;--line:#2c3649;--ac:#6aa3ff;--up:#4cd08a;--dn:#ff7b73;--sat:#6aa3ff;--sun:#ff7b73;--sel:#26344d;color-scheme:dark}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;padding:14px}
@@ -53,6 +53,11 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-off
 .pbar{height:10px;background:var(--bg);border:1px solid var(--line);border-radius:999px;overflow:hidden}
 .pbar i{display:block;height:100%;background:var(--ac);border-radius:999px}
 #inputCard{scroll-margin-top:10px}
+.kdgold{color:var(--gold)}
+.kdrow{padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.kdrow .h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kdrow .del{padding:4px 10px;font-size:12px}
+.kdform{display:grid;gap:6px}
 </style>
 </head>
 <body>
@@ -72,7 +77,7 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-off
 </div></details>
 <details style="margin-top:8px;font-size:12px;color:var(--sub)"><summary>データのバックアップ</summary>
 <div class="row" style="margin-top:8px"><button class="g" id="exp" style="padding:6px 10px;font-size:12px">書き出し（JSON）</button><button class="g" id="impBtn" style="padding:6px 10px;font-size:12px">読み込み</button><input type="file" id="imp" accept="application/json,.json" hidden></div>
-<div class="note">記録・メモ・目標をJSONファイルに保存／復元できます。復元すると今のデータに上書きされます。ブラウザのデータ消去に備えて、ときどき書き出しをおすすめします。</div></details>
+<div class="note">記録・メモ・目標・鍵引き記録をJSONファイルに保存／復元できます。復元すると今のデータに上書きされます。ブラウザのデータ消去に備えて、ときどき書き出しをおすすめします。</div></details>
 </div>
 
 <div class="card stats">
@@ -93,6 +98,26 @@ input:focus-visible,button:focus-visible{outline:2px solid var(--ac);outline-off
 <div id="memos" style="margin-top:10px"></div>
 </div>
 <div class="card"><div class="row" style="justify-content:space-between"><strong>推移</strong><span style="display:flex;gap:6px"><button class="g" id="cr0" style="padding:4px 10px;font-size:12px">全部</button><button class="g" id="cr90" style="padding:4px 10px;font-size:12px">90日</button><button class="g" id="cr30" style="padding:4px 10px;font-size:12px">30日</button></span></div><div id="chart" style="margin-top:8px"></div>
+</div>
+<div class="card" id="kdCard">
+<strong>🔑 鍵引き記録</strong>
+<div class="note" style="margin-top:4px">日付・時間・取得氷晶・消費した鍵と回収率の記録です。氷晶の残高には自動で加算されません。</div>
+<div class="stats" style="margin-top:10px">
+<div>引いた回数<b id="kdCnt">-</b></div>
+<div>累計の消費鍵<b id="kdKeys" style="color:var(--gold)">-</b></div>
+<div>累計の取得氷晶<b id="kdGain" style="color:var(--up)">-</b></div>
+<div>総回収率<b id="kdRate" style="color:var(--ac)">-</b></div>
+</div>
+<div class="row" style="margin-top:10px"><button class="g" id="kdAddBtn">＋ 手動で追加</button></div>
+<div id="kdForm" hidden>
+<div class="kdform" style="margin-top:8px">
+<div class="row"><label class="fld"><span>日付</span><input type="date" id="kdDate"></label><label class="fld"><span>時刻</span><input type="time" id="kdTime"></label><label class="fld grow"><span>イベント名</span><input type="text" id="kdName" maxlength="30" value="鍵引き"></label></div>
+<div class="row"><label class="fld grow"><span>取得氷晶</span><input type="number" id="kdGainIn" inputmode="numeric" min="0" placeholder="例：18600"></label><label class="fld grow"><span>消費した鍵</span><input type="number" id="kdKeysIn" inputmode="numeric" min="1" placeholder="例：16500"></label></div>
+<div class="row"><button id="kdSave">追加する</button><button class="g" id="kdCancel">キャンセル</button></div>
+<div class="res" id="kdRes"></div>
+</div>
+</div>
+<div id="kdList" style="margin-top:6px;max-height:340px;overflow:auto"></div>
 </div>
 </div>
 
@@ -254,7 +279,7 @@ $("save").onclick=function(){
 $("del").onclick=function(){var k=$("date").value;if(data[k]!==undefined||memo[k]){if(!window.confirm(k+" の記録を削除しますか？"))return;delete data[k];delete memo[k];save();$("val").value="";$("memo").value="";showRes();render()}};
 $("todayBtn").onclick=function(){view=new Date();view.setDate(1);render()};
 $("exp").onclick=function(){
-  var payload={app:"ice-log",version:1,data:data,memo:memo,goal:GOAL,gdate:GDATE};
+  var payload={app:"ice-log",version:1,data:data,memo:memo,goal:GOAL,gdate:GDATE,keydraws:kd};
   var blob=new Blob([JSON.stringify(payload,null,1)],{type:"application/json"});
   var a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ice-log-backup-"+today+".json";document.body.appendChild(a);a.click();a.remove();
   setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
@@ -274,7 +299,8 @@ $("imp").onchange=function(){
       if(j.memo&&typeof j.memo==="object")memo=j.memo;
       if(+j.goal>0){GOAL=+j.goal;try{localStorage.setItem(GKEY,String(GOAL))}catch(e){}}
       if(typeof j.gdate==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(j.gdate)){GDATE=j.gdate;try{localStorage.setItem(GDKEY,GDATE)}catch(e){}}
-      save();$("goal").value=GOAL;syncDays();sel=today;$("date").value=today;$("val").value=data[today]!==undefined?data[today]:"";$("memo").value=memo[today]||"";showRes();render();
+      if(Array.isArray(j.keydraws)){kd=j.keydraws.filter(validKd).map(normKd);saveKd()}
+      save();$("goal").value=GOAL;syncDays();sel=today;$("date").value=today;$("val").value=data[today]!==undefined?data[today]:"";$("memo").value=memo[today]||"";showRes();render();drawKd();
       $("res").textContent="バックアップを読み込みました";
     }catch(e){$("res").textContent="読み込みに失敗しました。JSONファイルを確認してください"}
   };
@@ -285,7 +311,43 @@ $("next").onclick=function(){view=new Date(view.getFullYear(),view.getMonth()+1,
 if(data[today]!==undefined)$("val").value=data[today];
 $("memo").value=memo[today]||"";
 ["cr0","cr90","cr30"].forEach(function(id){$(id).onclick=function(){chartRange=id==="cr0"?0:id==="cr90"?90:30;drawChart()}});
-showRes();render();
+var KDKEY="ice-keydraw-v1",kd=[];
+function validKd(r){return !!r&&/^\d{4}-\d{2}-\d{2}$/.test(r.d)&&isFinite(+r.g)&&+r.g>=0&&isFinite(+r.k)&&+r.k>0}
+function normKd(r){return{d:r.d,t:(typeof r.t==="string"&&/^\d{2}:\d{2}/.test(r.t))?r.t.slice(0,5):"",n:(typeof r.n==="string"&&r.n)?r.n:"鍵引き",g:+r.g,k:+r.k}}
+try{var kd0=JSON.parse(localStorage.getItem(KDKEY)||"[]");if(Array.isArray(kd0))kd=kd0.filter(validKd).map(normKd)}catch(e){kd=[]}
+function saveKd(){try{localStorage.setItem(KDKEY,JSON.stringify(kd))}catch(e){}}
+function kdRate(g,k){return k>0?g/k*100:0}
+function drawKd(){
+  var tk=0,tg=0;kd.forEach(function(r){tk+=r.k;tg+=r.g});
+  $("kdCnt").textContent=kd.length?fmt(kd.length)+" 回":"-";
+  $("kdKeys").textContent=kd.length?fmt(tk):"-";
+  $("kdGain").textContent=kd.length?fmt(tg):"-";
+  $("kdRate").textContent=kd.length?kdRate(tg,tk).toFixed(1)+"%":"-";
+  var el=$("kdList");el.innerHTML="";
+  if(!kd.length){el.innerHTML="<div class='note'>まだ記録がありません。「＋ 手動で追加」から記録できます</div>";return}
+  kd.slice().sort(function(a,b){return (b.d+" "+b.t).localeCompare(a.d+" "+a.t)}).forEach(function(r){
+    var row=document.createElement("div");row.className="kdrow";
+    var head=document.createElement("div");head.className="h";
+    var l=document.createElement("span");l.textContent=r.d.replace(/-/g,"/")+(r.t?" "+r.t:"")+"　"+r.n;head.appendChild(l);
+    var del=document.createElement("button");del.className="g del";del.textContent="削除";
+    del.onclick=function(){if(!window.confirm("この鍵引き記録を削除しますか？"))return;var i=kd.indexOf(r);if(i>=0)kd.splice(i,1);saveKd();drawKd()};
+    head.appendChild(del);row.appendChild(head);
+    var sub=document.createElement("div");sub.style.cssText="margin-top:2px;color:var(--sub)";
+    sub.innerHTML="取得 <b class='up'>"+fmt(r.g)+"</b>　消費鍵 <b class='kdgold'>"+fmt(r.k)+"</b>　回収率 <b style='color:var(--tx)'>"+kdRate(r.g,r.k).toFixed(1)+"%</b>";
+    row.appendChild(sub);el.appendChild(row);
+  });
+}
+$("kdAddBtn").onclick=function(){var now=new Date();$("kdForm").hidden=false;$("kdAddBtn").hidden=true;$("kdDate").value=today;$("kdTime").value=String(now.getHours()).padStart(2,"0")+":"+String(now.getMinutes()).padStart(2,"0");$("kdRes").textContent=""};
+$("kdCancel").onclick=function(){$("kdForm").hidden=true;$("kdAddBtn").hidden=false;$("kdRes").textContent=""};
+$("kdSave").onclick=function(){
+  var d=$("kdDate").value,t=$("kdTime").value,n=$("kdName").value.trim()||"鍵引き",g=parseInt($("kdGainIn").value,10),k=parseInt($("kdKeysIn").value,10);
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){$("kdRes").textContent="日付を入力してください";return}
+  if(isNaN(g)||g<0){$("kdRes").textContent="取得氷晶を入力してください";return}
+  if(isNaN(k)||k<=0){$("kdRes").textContent="消費した鍵を1以上で入力してください";return}
+  kd.push({d:d,t:t,n:n,g:g,k:k});saveKd();drawKd();
+  $("kdGainIn").value="";$("kdKeysIn").value="";$("kdRes").textContent="追加しました";
+};
+showRes();render();drawKd();
 </script>
 </body>
 </html>
